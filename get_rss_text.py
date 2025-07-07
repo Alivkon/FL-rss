@@ -1,52 +1,101 @@
+#!/usr/bin/env python3
+"""
+FL.ru RSS Parser
+
+Парсер RSS-ленты с сайта FL.ru для получения информации о заказах.
+Выводит результаты в консоль и сохраняет в текстовый файл.
+"""
+
 import requests
 import xml.etree.ElementTree as ET
 from datetime import datetime
+import sys
+import os
 
-url = "https://www.fl.ru/rss/all.xml?category=2"
+# Импортируем конфигурацию
+from config import (
+    RSS_URL, USER_AGENT, COOKIES, REQUEST_TIMEOUT,
+    OUTPUT_FILE_FORMAT, DATE_FORMAT, DISPLAY_DATE_FORMAT
+)
 
+# Заголовки для HTTP-запросов
 headers = {
-    "User-Agent": "...",
-    "Cookie": "__ddg1_=pgXi8yXApjrYcWufTZrg; _ym_uid=1745861446895267277; _ym_d=1745861446; r2UserId=1745861452066098; analytic_id=1745861452077462; cookies_accepted=1; mindboxDeviceUUID=ac79e4c3-a0c4-4125-9428-8a33529ecdb7; directCrm-session=%7B%22deviceGuid%22%3A%22ac79e4c3-a0c4-4125-9428-8a33529ecdb7%22%7D; _ga_RD9LL0K106=GS1.1.1745861440.1.1.1745863732.42.0.0; _ga=GA1.2.2050675551.1745861441; hidetopprjlenta=0; __ddgid_=4U3z4zXRsVAChIyY; __ddg2_=tzXqvxp82ii6KAib; id=9052465; name=profi_prog; pwd=65e4ff2bd982e606f528d9cf7fcf6ec9; user_device_id=k35d07ouvg18zx4daggqe908shntmdcs; _ga_cid_uuid4=00058339-3d20-486a-b505-b78a4ab6978e; PHPSESSID=gKZcV7KBngTeg6LyRZG9lBQ1yUMabhVyXhm9czwg; new_pf0=1; new_pf10=1; nfastpromo_x=%7B%22close%22%3A1%7D; nfastpromo_open=0; __ddg9_=109.245.36.26; _ym_isad=2; _ym_visorc=w; XSRF-TOKEN=WkIFqBeg6LHv8s7xn5hsoCcl4U8GJanIdp36lIHH; __ddg8_=93RnTiuxPs7LBxJv; __ddg10_=1750703158"
+    "User-Agent": USER_AGENT,
+    "Cookie": COOKIES
 }
-response = requests.get(url, headers=headers)
 
-# Создаем файл для записи результатов
-output_file = f"rss_output_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+
+def get_rss_data():
+    """Получает данные RSS-ленты"""
+    try:
+        response = requests.get(RSS_URL, headers=headers, timeout=REQUEST_TIMEOUT)
+        return response
+    except requests.exceptions.RequestException as e:
+        print(f"Ошибка при получении данных: {e}")
+        return None
 
 def print_and_write(text, file_handle):
     """Выводит текст в консоль и записывает в файл"""
     print(text)
     file_handle.write(text + '\n')
 
-print("HTTP статус:", response.status_code)
-print("Первые 200 символов ответа:")
-print(response.text[:400])
 
-if response.status_code == 200:
-    with open(output_file, 'w', encoding='utf-8') as f:
-        print_and_write(f"Результаты парсинга RSS от {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", f)
-        print_and_write("=" * 60, f)
-        print_and_write("", f)
-        
-        root = ET.fromstring(response.content)
-        for item in root.findall('.//item'):
-            title = item.find('title')
-            description = item.find('description')
-            link = item.find('link')
-            pubDate = item.find('pubDate')
-            if pubDate is not None:
-                print_and_write(f"Дата публикации: {pubDate.text}", f)
-            if title is not None:
-                print_and_write(f"Заголовок: {title.text}", f)
-            if description is not None:
-                print_and_write(f"Описание: {description.text}", f)
-            if link is not None:
-                print_and_write(f"Ссылка: {link.text}", f)
-            print_and_write('-' * 40, f)
-        
-        print_and_write("", f)
-        print_and_write(f"Результаты сохранены в файл: {output_file}", f)
-else:
-    with open(output_file, 'w', encoding='utf-8') as f:
-        error_msg = "Ошибка доступа. Возможно, требуется авторизация или сайт блокирует ботов."
-        print_and_write(error_msg, f)
+def main():
+    """Основная функция программы"""
+    # Создаем файл для записи результатов
+    output_file = f"rss_output_{datetime.now().strftime(DATE_FORMAT)}.txt"
+    
+    print("Получение данных RSS-ленты...")
+    response = get_rss_data()
+    
+    if response is None:
+        print("Не удалось получить данные RSS-ленты")
+        return
+    
+    print(f"HTTP статус: {response.status_code}")
+    print("Первые 200 символов ответа:")
+    print(response.text[:400])
+
+    if response.status_code == 200:
+        with open(output_file, 'w', encoding='utf-8') as f:
+            print_and_write(f"Результаты парсинга RSS от {datetime.now().strftime(DISPLAY_DATE_FORMAT)}", f)
+            print_and_write("=" * 60, f)
+            print_and_write("", f)
+            
+            try:
+                root = ET.fromstring(response.content)
+                items_count = 0
+                
+                for item in root.findall('.//item'):
+                    title = item.find('title')
+                    description = item.find('description')
+                    link = item.find('link')
+                    pubDate = item.find('pubDate')
+                    
+                    if pubDate is not None:
+                        print_and_write(f"Дата публикации: {pubDate.text}", f)
+                    if title is not None:
+                        print_and_write(f"Заголовок: {title.text}", f)
+                    if description is not None:
+                        print_and_write(f"Описание: {description.text}", f)
+                    if link is not None:
+                        print_and_write(f"Ссылка: {link.text}", f)
+                    print_and_write('-' * 40, f)
+                    items_count += 1
+                
+                print_and_write("", f)
+                print_and_write(f"Обработано элементов: {items_count}", f)
+                print_and_write(f"Результаты сохранены в файл: {output_file}", f)
+                
+            except ET.ParseError as e:
+                error_msg = f"Ошибка парсинга XML: {e}"
+                print_and_write(error_msg, f)
+                
+    else:
+        with open(output_file, 'w', encoding='utf-8') as f:
+            error_msg = f"Ошибка доступа (HTTP {response.status_code}). Возможно, требуется авторизация или сайт блокирует ботов."
+            print_and_write(error_msg, f)
+
+
+if __name__ == "__main__":
+    main()
