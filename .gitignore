@@ -130,6 +130,8 @@ dmypy.json
 
 # Project specific
 rss_output_*.txt
+texts/
 *.txt
 !requirements.txt
 !README.md
+!excluded_categories.txt

@@ -2,8 +2,7 @@
 Конфигурация для FL.ru RSS Parser
 """
 
-# URL RSS-ленты
-RSS_URL = "https://www.fl.ru/rss/all.xml?category=2"
+
 
 # User-Agent для HTTP-запросов
 USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
