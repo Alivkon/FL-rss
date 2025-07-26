@@ -5,7 +5,7 @@
 
 import sqlite3
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Tuple, Optional
 
 
@@ -148,3 +148,161 @@ class RSSDatabase:
         except sqlite3.Error as e:
             print(f"Ошибка при очистке базы данных: {e}")
             return False
+    
+    def search_by_keywords(self, keywords: List[str], search_in_title: bool = True, search_in_description: bool = True) -> List[Tuple]:
+        """Поиск элементов по ключевым словам"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                # Формируем SQL запрос для поиска
+                conditions = []
+                params = []
+                
+                for keyword in keywords:
+                    keyword_conditions = []
+                    if search_in_title:
+                        keyword_conditions.append("LOWER(title) LIKE ?")
+                        params.append(f"%{keyword.lower()}%")
+                    if search_in_description:
+                        keyword_conditions.append("LOWER(description) LIKE ?")
+                        params.append(f"%{keyword.lower()}%")
+                    
+                    if keyword_conditions:
+                        conditions.append(f"({' OR '.join(keyword_conditions)})")
+                
+                if not conditions:
+                    return []
+                
+                query = f'''
+                    SELECT DISTINCT id, title, description, link, pub_date, category, created_at
+                    FROM rss_items 
+                    WHERE {' OR '.join(conditions)}
+                    ORDER BY created_at DESC
+                '''
+                
+                cursor.execute(query, params)
+                return cursor.fetchall()
+                
+        except sqlite3.Error as e:
+            print(f"Ошибка при поиске по ключевым словам: {e}")
+            return []
+
+    def create_filtered_database(self, keywords: List[str], output_path: str = None, 
+                               search_in_title: bool = True, search_in_description: bool = True) -> str:
+        """Создание новой базы данных с проектами, содержащими ключевые слова"""
+        if output_path is None:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            keywords_str = "_".join(keywords[:3])  # Используем первые 3 ключевых слова для имени
+            output_path = f"rss_filtered_{keywords_str}_{timestamp}.db"
+        
+        try:
+            # Создаем новую базу данных
+            new_db = RSSDatabase(output_path)
+            
+            # Получаем отфильтрованные элементы
+            filtered_items = self.search_by_keywords(keywords, search_in_title, search_in_description)
+            
+            if not filtered_items:
+                print(f"Не найдено проектов с ключевыми словами: {', '.join(keywords)}")
+                return output_path
+            
+            # Копируем элементы в новую базу
+            added_count = 0
+            for item in filtered_items:
+                id_val, title, description, link, pub_date, category, created_at = item
+                
+                # Добавляем элемент в новую базу
+                success = new_db.add_item(title, description, link, pub_date, category)
+                if success:
+                    added_count += 1
+            
+            print(f"✓ Создана база данных с отфильтрованными проектами: {output_path}")
+            print(f"✓ Скопировано {added_count} проектов с ключевыми словами: {', '.join(keywords)}")
+            
+            # Показываем статистику новой базы
+            new_stats = new_db.get_statistics()
+            print(f"✓ Статистика новой базы: {new_stats.get('total_items', 0)} записей")
+            
+            return output_path
+            
+        except Exception as e:
+            print(f"Ошибка при создании отфильтрованной базы: {e}")
+            return ""
+
+    def get_recent_items(self, days: int = 10) -> List[Tuple]:
+        """Получение элементов за последние N дней"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                # Получаем все элементы для фильтрации
+                cursor.execute('''
+                    SELECT id, title, description, link, pub_date, category, created_at
+                    FROM rss_items 
+                    ORDER BY created_at DESC
+                ''')
+                
+                all_items = cursor.fetchall()
+                recent_items = []
+                cutoff_date = datetime.now() - timedelta(days=days)
+                
+                for item in all_items:
+                    id_val, title, description, link, pub_date, category, created_at = item
+                    
+                    # Пробуем парсить created_at
+                    try:
+                        item_date = datetime.fromisoformat(created_at.replace('Z', '+00:00').replace('+00:00', ''))
+                    except:
+                        # Если не удается распарсить, пропускаем
+                        continue
+                    
+                    # Проверяем, попадает ли дата в диапазон
+                    if item_date >= cutoff_date:
+                        recent_items.append(item)
+                
+                return recent_items
+                
+        except sqlite3.Error as e:
+            print(f"Ошибка при получении недавних элементов: {e}")
+            return []
+
+    def create_recent_database(self, days: int = 10, output_path: str = None) -> str:
+        """Создание новой базы данных с элементами за последние N дней"""
+        if output_path is None:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            output_path = f"rss_recent_{days}days_{timestamp}.db"
+        
+        try:
+            # Создаем новую базу данных
+            new_db = RSSDatabase(output_path)
+            
+            # Получаем недавние элементы
+            recent_items = self.get_recent_items(days)
+            
+            if not recent_items:
+                print(f"Не найдено элементов за последние {days} дней")
+                return output_path
+            
+            # Копируем элементы в новую базу
+            added_count = 0
+            for item in recent_items:
+                id_val, title, description, link, pub_date, category, created_at = item
+                
+                # Добавляем элемент в новую базу
+                success = new_db.add_item(title, description, link, pub_date, category)
+                if success:
+                    added_count += 1
+            
+            print(f"✓ Создана база данных с недавними проектами: {output_path}")
+            print(f"✓ Скопировано {added_count} проектов за последние {days} дней")
+            
+            # Показываем статистику новой базы
+            new_stats = new_db.get_statistics()
+            print(f"✓ Статистика новой базы: {new_stats.get('total_items', 0)} записей")
+            
+            return output_path
+            
+        except Exception as e:
+            print(f"Ошибка при создании базы недавних проектов: {e}")
+            return ""

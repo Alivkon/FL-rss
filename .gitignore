@@ -103,12 +103,17 @@ celerybeat.pid
 
 # Environments
 .env
-.venv
-env/
+*.env
 venv/
 ENV/
 env.bak/
 venv.bak/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
 
 # Spyder project settings
 .spyderproject
@@ -135,3 +140,9 @@ texts/
 !requirements.txt
 !README.md
 !excluded_categories.txt
+*.db
+*.sqlite
+
+# OS generated files
+.DS_Store
+Thumbs.db

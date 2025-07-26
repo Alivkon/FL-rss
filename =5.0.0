@@ -1,0 +1,5 @@
+Collecting configparser
+  Downloading configparser-7.2.0-py3-none-any.whl.metadata (5.5 kB)
+Downloading configparser-7.2.0-py3-none-any.whl (17 kB)
+Installing collected packages: configparser
+Successfully installed configparser-7.2.0
