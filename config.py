@@ -1,21 +1,46 @@
+#!/usr/bin/env python3
 """
-Конфигурация для FL.ru RSS Parser
+Конфигурация FL.ru RSS Parser
 """
 
-# User-Agent для HTTP-запросов
-USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+import os
+from dotenv import load_dotenv
 
-# Cookies для авторизации (обновите при необходимости)
-COOKIES = "__ddg1_=pgXi8yXApjrYcWufTZrg; _ym_uid=1745861446895267277; _ym_d=1745861446; r2UserId=1745861452066098; analytic_id=1745861452077462; cookies_accepted=1; mindboxDeviceUUID=ac79e4c3-a0c4-4125-9428-8a33529ecdb7; directCrm-session=%7B%22deviceGuid%22%3A%22ac79e4c3-a0c4-4125-9428-8a33529ecdb7%22%7D; _ga_RD9LL0K106=GS1.1.1745861440.1.1.1745863732.42.0.0; _ga=GA1.2.2050675551.1745861441; hidetopprjlenta=0; __ddgid_=4U3z4zXRsVAChIyY; __ddg2_=tzXqvxp82ii6KAib; id=9052465; name=profi_prog; pwd=65e4ff2bd982e606f528d9cf7fcf6ec9; user_device_id=k35d07ouvg18zx4daggqe908shntmdcs; _ga_cid_uuid4=00058339-3d20-486a-b505-b78a4ab6978e; PHPSESSID=gKZcV7KBngTeg6LyRZG9lBQ1yUMabhVyXhm9czwg; new_pf0=1; new_pf10=1; nfastpromo_x=%7B%22close%22%3A1%7D; nfastpromo_open=0; __ddg9_=109.245.36.26; _ym_isad=2; _ym_visorc=w; XSRF-TOKEN=WkIFqBeg6LHv8s7xn5hsoCcl4U8GJanIdp36lIHH; __ddg8_=93RnTiuxPs7LBxJv; __ddg10_=1750703158"
+# Загружаем переменные из .env файла
+load_dotenv()
 
-# Таймаут для HTTP-запросов (в секундах)
-REQUEST_TIMEOUT = 60
+# Telegram настройки (из .env)
+TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
+TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
 
-# Формат файла вывода
-OUTPUT_FILE_FORMAT = "rss_output_{timestamp}.txt"
-DATE_FORMAT = "%Y%m%d_%H%M%S"
-DISPLAY_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
+# HTTP настройки (из .env с fallback значениями)
+USER_AGENT = os.getenv('USER_AGENT', 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36')
+COOKIES = os.getenv('COOKIES', '')
+REQUEST_TIMEOUT = int(os.getenv('REQUEST_TIMEOUT', '30'))
 
-# Telegram Bot настройки
-TELEGRAM_TOKEN = "7982320527:AAHuGWN1CfmSipq1Q5l3yLPWf8eryJpddWw"
-TELEGRAM_CHAT_ID = "5808424974"  # Или ID чата, например: "123456789"
+# Форматы дат
+DISPLAY_DATE_FORMAT = os.getenv('DISPLAY_DATE_FORMAT', '%Y-%m-%d %H:%M:%S')
+
+# Проверка обязательных переменных
+def check_config():
+    """Проверяет наличие обязательных настроек"""
+    missing = []
+    
+    if not TELEGRAM_TOKEN:
+        missing.append('TELEGRAM_TOKEN')
+    
+    if not TELEGRAM_CHAT_ID:
+        missing.append('TELEGRAM_CHAT_ID')
+    
+    if missing:
+        print("❌ Отсутствуют обязательные переменные окружения:")
+        for var in missing:
+            print(f"   - {var}")
+        print("\nСоздайте файл .env и укажите необходимые значения")
+        return False
+    
+    return True
+
+# Автоматическая проверка при импорте
+if __name__ == "__main__":
+    check_config()

@@ -9,6 +9,10 @@ import logging
 from typing import Set
 import asyncio
 from telegram import Bot
+from dotenv import load_dotenv
+
+# Загружаем переменные окружения
+load_dotenv()
 
 # Настройка логирования
 logging.basicConfig(
@@ -193,15 +197,15 @@ def get_telegram_notifier():
     
     if _telegram_notifier is None:
         try:
-            from config import TELEGRAM_TOKEN, TELEGRAM_CHAT_ID
+            # Получаем токен и chat_id из переменных окружения
+            telegram_token = os.getenv('TELEGRAM_TOKEN')
+            telegram_chat_id = os.getenv('TELEGRAM_CHAT_ID')
             
-            if TELEGRAM_TOKEN and TELEGRAM_CHAT_ID:
-                _telegram_notifier = TelegramNotifier(TELEGRAM_TOKEN, TELEGRAM_CHAT_ID)
+            if telegram_token and telegram_chat_id:
+                _telegram_notifier = TelegramNotifier(telegram_token, telegram_chat_id)
                 logger.info("Telegram уведомитель инициализирован")
             else:
-                logger.warning("TELEGRAM_TOKEN или TELEGRAM_CHAT_ID не настроены")
-        except ImportError:
-            logger.warning("Не удалось импортировать настройки Telegram")
+                logger.warning("TELEGRAM_TOKEN или TELEGRAM_CHAT_ID не настроены в .env файле")
         except Exception as e:
             logger.error(f"Ошибка при инициализации Telegram бота: {e}")
     
@@ -220,7 +224,8 @@ async def test_bot():
     """Тестирует работу бота"""
     notifier = get_telegram_notifier()
     if not notifier:
-        print("Telegram бот не настроен")
+        print("❌ Telegram бот не настроен")
+        print("Проверьте наличие TELEGRAM_TOKEN и TELEGRAM_CHAT_ID в .env файле")
         return False
     
     try:
@@ -228,10 +233,10 @@ async def test_bot():
             chat_id=notifier.chat_id,
             text="🤖 Telegram бот FL.ru готов к работе!"
         )
-        print("Тестовое сообщение отправлено успешно")
+        print("✅ Тестовое сообщение отправлено успешно")
         return True
     except Exception as e:
-        print(f"Ошибка при тестировании бота: {e}")
+        print(f"❌ Ошибка при тестировании бота: {e}")
         return False
 
 
